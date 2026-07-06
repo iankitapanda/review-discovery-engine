@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review Discovery Engine</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: #F7F6F2;
+    color: #1F1E1B;
+    padding: 2.5rem 1.5rem 4rem;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #0F6E56;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .sub {
+    color: #6B6A63;
+    font-size: 14.5px;
+    margin: 0 0 2rem;
+    max-width: 56ch;
+  }
+  label {
+    font-size: 13px;
+    color: #6B6A63;
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    font-size: 14px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #DDDACF;
+    background: #FFFFFF;
+    color: #1F1E1B;
+    resize: vertical;
+    font-family: inherit;
+  }
+  textarea:focus { outline: none; border-color: #0F6E56; box-shadow: 0 0 0 3px rgba(15,110,86,0.12); }
+  .row { display: flex; gap: 10px; align-items: center; margin: 14px 0 2rem; }
+  button {
+    background: #1F1E1B;
+    color: #FAF9F5;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  button:hover { background: #35332D; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .status { font-size: 13px; color: #6B6A63; }
+  h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    padding-top: 6px;
+  }
+  .theme-card {
+    background: #E1F5EE;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .theme-card .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .theme-card .name { font-size: 14.5px; font-weight: 600; color: #04342C; }
+  .theme-card .freq { font-size: 12px; color: #0F6E56; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; }
+  .theme-card .desc { font-size: 13.5px; color: #0F6E56; margin: 6px 0 0; }
+  ul.plain { margin: 0 0 2rem; padding-left: 20px; }
+  ul.plain li { font-size: 14.5px; margin-bottom: 7px; }
+  .segments { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 2rem; }
+  .segment-card {
+    background: #FAECE7;
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .segment-card .name { font-size: 14px; font-weight: 600; color: #4A1B0C; margin-bottom: 4px; }
+  .segment-card .desc { font-size: 13.5px; color: #993C1D; }
+  .footer-note {
+    margin-top: 3rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #E4E1D6;
+    font-size: 12.5px;
+    color: #9B998F;
+  }
+  #results { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Growth · Music discovery</div>
+  <h1>Review discovery engine</h1>
+  <p class="sub">Paste raw user reviews and feedback from App Store, Play Store, Reddit, or forums. Claude clusters them into themes, frustrations, desired behaviors, segments, and unmet needs.</p>
+
+  <label for="reviews-input">Raw reviews / feedback</label>
+  <textarea id="reviews-input"></textarea>
+
+  <div class="row">
+    <button id="analyze-btn">Analyze reviews</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <div id="results">
+    <h2>Themes</h2>
+    <div id="themes"></div>
+
+    <h2>Top frustrations</h2>
+    <ul class="plain" id="frustrations"></ul>
+
+    <h2>Desired listening behaviors</h2>
+    <ul class="plain" id="behaviors"></ul>
+
+    <h2>User segments</h2>
+    <div class="segments" id="segments"></div>
+
+    <h2>Unmet needs</h2>
+    <ul class="plain" id="needs"></ul>
+  </div>
+
+  <div class="footer-note">Review Discovery Engine · built for the Product Manager Fellowship graduation project</div>
+</div>
+
+<script>
+const sampleReviews = [
+"Discover Weekly used to be great, now it's the same songs every week even after I hide them. I've hidden the same three artists ten times and they keep coming back.",
+"I only listen to lo-fi and jazz for work but every Monday I get metal and country. Doesn't feel like it knows me at all anymore.",
+"Been on Spotify five years. Recommendations used to introduce me to new artists constantly. Now it's just my own playlists reshuffled back at me.",
+"Smart Shuffle keeps injecting the same 20 songs into every playlist regardless of genre. Turned it off, autoplay does the same thing.",
+"I want background music for deep work, not more of the same three albums I've played to death. Wish there was a real 'surprise me' mode.",
+"My taste is pretty varied honestly, but Spotify picked one narrow lane months ago and won't budge no matter what I do.",
+"Every week I mark songs as disliked and every week the same ones show up again in Discover Weekly. Feels like my feedback goes nowhere.",
+"Been considering switching to Apple Music. Paying for premium and getting less music discovery than the free radio stations used to give me."
+].join("\n\n");
+document.getElementById('reviews-input').value = sampleReviews;
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+function render(data) {
+  const themes = document.getElementById('themes');
+  themes.innerHTML = (data.themes || []).map(t => `
+    <div class="theme-card">
+      <div class="top">
+        <span class="name">${esc(t.name)}</span>
+        <span class="freq">${esc(t.frequency)}</span>
+      </div>
+      <p class="desc">${esc(t.description)}</p>
+    </div>
+  `).join('');
+
+  document.getElementById('frustrations').innerHTML =
+    (data.frustrations || []).map(f => `<li>${esc(f)}</li>`).join('');
+
+  document.getElementById('behaviors').innerHTML =
+    (data.desired_behaviors || []).map(f => `<li>${esc(f)}</li>`).join('');
+
+  document.getElementById('segments').innerHTML =
+    (data.segments || []).map(s => `
+      <div class="segment-card">
+        <div class="name">${esc(s.name)}</div>
+        <div class="desc">${esc(s.description)}</div>
+      </div>
+    `).join('');
+
+  document.getElementById('needs').innerHTML =
+    (data.unmet_needs || []).map(f => `<li>${esc(f)}</li>`).join('');
+
+  document.getElementById('results').style.display = 'block';
+}
+
+document.getElementById('analyze-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('analyze-btn');
+  const status = document.getElementById('status');
+  const input = document.getElementById('reviews-input').value.trim();
+  if (!input) { status.textContent = 'Paste some reviews first.'; return; }
+
+  btn.disabled = true;
+  status.textContent = 'Analyzing...';
+  document.getElementById('results').style.display = 'none';
+
+  const system = "You are a product research analyst for a music streaming app's Growth team. Given raw user reviews and feedback about music discovery and recommendations, extract structured insights. Respond with ONLY valid JSON, no markdown fences, no preamble, matching exactly this shape: {\"themes\": [{\"name\": string, \"frequency\": string like 'high' or 'medium' or 'low', \"description\": string under 20 words}], \"frustrations\": [string], \"desired_behaviors\": [string], \"segments\": [{\"name\": string, \"description\": string under 20 words}], \"unmet_needs\": [string]}. Aim for 3-5 themes, 3-5 frustrations, 3-4 desired behaviors, 2-3 segments, 3-4 unmet needs. Be specific and grounded in the actual text, not generic.";
+
+  try {
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ system: system, message: input })
+    });
+    const data = await response.json();
+    const textBlock = (data.content || []).find(b => b.type === 'text');
+    let raw = textBlock ? textBlock.text : '{}';
+    raw = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(raw);
+    render(parsed);
+    status.textContent = 'Done.';
+  } catch (err) {
+    status.textContent = 'Something went wrong. Try again.';
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
